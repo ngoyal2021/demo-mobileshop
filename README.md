@@ -5,7 +5,7 @@
 **Demo Mobile Shop – Android Test Automation Framework**
 
 ## Description
-This repository contains a production-grade Android UI automation framework built on Espresso. It supports both local and cloud execution (Sauce Labs), selective backend mocking, and CI-friendly reporting.
+This repository contains a demo Android UI automation framework built on Espresso. It supports both local and cloud execution (Sauce Labs), selective backend mocking, and CI-friendly reporting.
 
 ---
 
