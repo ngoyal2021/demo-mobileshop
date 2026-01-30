@@ -1,0 +1,85 @@
+# fastlane/Appfile
+#
+# ShopMobile Project Configuration
+# Global app metadata used across all fastlane lanes
+#
+# This file is version-controlled and shared with the team.
+# Sensitive data (API keys, credentials) should NOT go here.
+# Use environment variables or .env files instead.
+
+# ═══════════════════════════════════════════════════════════════════
+# APPLICATION IDENTIFICATION
+# ═══════════════════════════════════════════════════════════════════
+
+# Android package name (unique identifier)
+# Used by Android, Sauce Labs, and test instrumentation
+app_identifier "com.example.shopmobile"
+
+# Human-readable app name
+# Used in logs, messages, and UI output
+app_name "ShopMobile"
+
+# ═══════════════════════════════════════════════════════════════════
+# BUILD CONFIGURATION
+# ═══════════════════════════════════════════════════════════════════
+
+# Android build variant
+# For testing, typically "debug"
+build_variant "debug"
+
+# ═══════════════════════════════════════════════════════════════════
+# TEST ANNOTATION PACKAGE
+# ═══════════════════════════════════════════════════════════════════
+
+# Package containing test annotations
+# Used by Fastfile to filter tests at runtime
+test_annotation_package "com.example.shopmobile.annotations"
+
+# Available annotations:
+# - SmokeTest: Critical path tests (fast feedback)
+# - RegressionTest: Comprehensive tests (full validation)
+# - FeatureTest: Feature-specific tests
+
+# ═══════════════════════════════════════════════════════════════════
+# MOCK SERVER CONFIGURATION
+# ═══════════════════════════════════════════════════════════════════
+
+# Gradle property name for mock server flag
+# When true: Uses MockWebServer (local, fast)
+# When false: Uses fakestoreapi.com (real API)
+mock_server_property "useMockServer"
+
+# ═══════════════════════════════════════════════════════════════════
+# SAUCE LABS CONFIGURATION (Optional)
+# ═══════════════════════════════════════════════════════════════════
+
+# If using Sauce Labs for remote testing:
+# sauce_region "us-west-1"
+# sauce_organization_id "your-org-id"
+
+# ═══════════════════════════════════════════════════════════════════
+# NOTES
+# ═══════════════════════════════════════════════════════════════════
+#
+# Access these values in Fastfile:
+#   app_identifier              # "com.example.shopmobile"
+#   app_name                    # "ShopMobile"
+#   build_variant               # "debug"
+#   test_annotation_package     # "com.example.shopmobile.annotations"
+#   mock_server_property        # "useMockServer"
+#
+# Example usage in Fastfile:
+#   gradle_flags.push("-P#{mock_server_property}=true")
+#   gradle_flags.push("-Pandroid.testInstrumentationRunnerArguments.annotation=#{test_annotation_package}.SmokeTest")
+#
+# SENSITIVE DATA:
+# Do NOT put API keys, passwords, or tokens here!
+# Use environment variables or .env files:
+#   export SAUCE_USERNAME=your-username
+#   export SAUCE_ACCESS_KEY=your-access-key
+#
+# Then access in Fastfile:
+#   sauce_username = ENV["SAUCE_USERNAME"]
+#   sauce_access_key = ENV["SAUCE_ACCESS_KEY"]
+#
+# For more info: https://docs.fastlane.tools/advanced/appfile/

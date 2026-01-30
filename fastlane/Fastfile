@@ -1,0 +1,179 @@
+# Fastfile for ShopMobile
+# This file implements the test execution logic for both local emulators and Sauce Labs
+
+default_platform(:android)
+
+platform :android do
+
+  # Project Configuration
+  APP_PACKAGE = "com.example.shopmobile"
+  ANNOTATION_PACKAGE = "com.example.shopmobile.annotations"
+
+  desc "Run tests locally on connected emulator"
+  lane :local do |options|
+    # Determine mock mode (default to true if not specified)
+    use_mock = options[:mock].nil? ? false : options[:mock]
+    mock_flag = use_mock ? "-PuseMockServer=true" : "-PuseMockServer=false"
+    annotation = options[:annotation]
+
+    UI.message "Running tests locally with mock mode: #{use_mock}"
+
+    # Run connected Android tests on local emulator
+    gradle_props = {
+        "useMockServer" => use_mock.to_s
+      }
+
+      if annotation.to_s.strip != ""
+        UI.message "Running only tests with annotation: #{annotation}"
+        gradle_props[
+          "android.testInstrumentationRunnerArguments.annotation"
+        ] = "com.example.shopmobile.annotations.#{annotation}"
+      else
+        UI.message "Running full test suite (no annotation filter)"
+      end
+
+      # Run connected Android tests on local emulator
+      gradle(
+        task: "connectedDebugAndroidTest",
+        properties: gradle_props
+      )
+
+    UI.success "Local tests completed successfully!"
+  end
+
+
+  desc "Run tests on Sauce Labs devices"
+  lane :sauce do |options|
+    # Determine mock mode (default to true if not specified)
+    UI.message "SAUCE_USERNAME=#{ENV['SAUCE_USERNAME']}"
+    UI.message "SAUCE_ACCESS_KEY present? #{!ENV['SAUCE_ACCESS_KEY'].to_s.empty?}"
+    use_mock = options[:mock].nil? ? false : options[:mock]
+    mock_flag = use_mock ? "-PuseMockServer=true" : "-PuseMockServer=false"
+    annotation = options[:annotation]
+    UI.message "Building APKs for Sauce Labs with mock mode: #{use_mock} and annotation #{annotation}"
+    if annotation.to_s.strip != ""
+        ENV["SAUCE_ANNOTATION"] =
+        "com.example.shopmobile.annotations.#{annotation}"
+    end
+
+    # Step 1: Build the app APK
+
+    UI.message "Cleaning the existing build"
+        gradle(
+          task: "clean"
+        )
+
+    UI.message "Building app APK (assembleDebug)..."
+    gradle(
+      task: "assembleDebug",
+      properties: {
+        "useMockServer" => use_mock.to_s
+      }
+    )
+
+    # Step 2: Build the test APK
+    UI.message "Building test APK (assembleDebugAndroidTest)..."
+    gradle(
+      task: "assembleDebugAndroidTest",
+      properties: {
+        "useMockServer" => use_mock.to_s
+      }
+    )
+
+    # Step 3: Check if saucectl is installed (cross-platform)
+    UI.message "Checking for saucectl installation..."
+
+    saucectl_found = false
+    begin
+      # Try to run saucectl --version (works on all platforms)
+      saucectl_version = sh("saucectl --version 2>&1", log: false).strip
+      if saucectl_version.include?("saucectl") || saucectl_version.match?(/\d+\.\d+\.\d+/)
+        UI.success "Found saucectl: #{saucectl_version}"
+        saucectl_found = true
+      end
+    rescue => ex
+      # saucectl not found or command failed
+      saucectl_found = false
+    end
+
+    unless saucectl_found
+      UI.error "❌ saucectl is not installed or not in PATH"
+      UI.important "saucectl is required to execute tests on Sauce Labs"
+      UI.message ""
+      UI.message "Installation instructions:"
+      UI.message "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      UI.message ""
+      UI.message "For Windows (using npm):"
+      UI.message "  npm install -g saucectl"
+      UI.message ""
+      UI.message "For macOS/Linux (using curl):"
+      UI.message "  curl -L https://saucelabs.github.io/saucectl/install | bash"
+      UI.message ""
+      UI.message "For more options, visit: https://docs.saucelabs.com/dev/cli/saucectl/"
+      UI.message ""
+      UI.message "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+      UI.user_error!("Please install saucectl and try again")
+    end
+
+    # Step 4: Execute saucectl (it will automatically find .sauce/config.yml)
+    UI.message "Executing tests on Sauce Labs..."
+    UI.message "saucectl will use configuration from .sauce/config.yml"
+
+    begin
+        repo_root = File.expand_path("..", __dir__)
+        Dir.chdir(repo_root)
+      sh("saucectl run --verbose", log:true)
+      UI.success "Sauce Labs tests completed successfully!"
+    rescue => ex
+      UI.error "Failed to run tests on Sauce Labs"
+      UI.error "Error: #{ex.message}"
+      UI.important "Make sure:"
+      UI.message "  1. .sauce/config.yml exists and is properly configured"
+      UI.message "  2. SAUCE_USERNAME and SAUCE_ACCESS_KEY environment variables are set"
+      UI.message "  3. APK paths in config.yml match your build output"
+      UI.user_error!("Sauce Labs execution failed")
+    end
+  end
+
+  desc "Run tests with mock server (shortcut for local:mock=true)"
+  lane :test_mock do
+    local(mock: true)
+  end
+
+  desc "Run tests with real server (shortcut for local:mock=false)"
+  lane :test_real do
+    local(mock: false)
+  end
+
+  desc "Display help information"
+  lane :usage do
+    UI.header "ShopMobile Fastlane Commands"
+    UI.message ""
+    UI.message "Available lanes:"
+    UI.message "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    UI.message ""
+    UI.message "🔧 Local Testing:"
+    UI.message "  fastlane local              - Run tests on local emulator (mock mode by default)"
+    UI.message "  fastlane local mock:true    - Run tests with mock server"
+    UI.message "  fastlane local mock:false   - Run tests with real server"
+    UI.message "  fastlane test_mock          - Shortcut for local with mock server"
+    UI.message "  fastlane test_real          - Shortcut for local with real server"
+    UI.message ""
+    UI.message "☁️  Sauce Labs Testing:"
+    UI.message "  fastlane sauce              - Run tests on Sauce Labs (mock mode by default)"
+    UI.message "  fastlane sauce mock:true    - Run tests on Sauce Labs with mock server"
+    UI.message "  fastlane sauce mock:false   - Run tests on Sauce Labs with real server"
+    UI.message ""
+    UI.message "📋 Information:"
+    UI.message "  fastlane help               - Display this help message"
+    UI.message ""
+    UI.message "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    UI.message ""
+    UI.message "Configuration:"
+    UI.message "  App Package: #{APP_PACKAGE}"
+    UI.message "  Annotation Package: #{ANNOTATION_PACKAGE}"
+    UI.message ""
+  end
+
+end
